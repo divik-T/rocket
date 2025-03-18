@@ -2,7 +2,7 @@
 #include <fstream>
 #include <cmath>
 
-const double pi = 3.141516;
+const double pi = 3.1415;
 const double dt = 0.01;
 const double g = 9.81;
 
