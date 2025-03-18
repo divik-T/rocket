@@ -2,7 +2,7 @@
 #include <fstream>
 #include <cmath>
 
-const double pi = 3.1415;
+const double pi = 3.141512343;
 const double dt = 0.01;
 const double g = 9.81;
 
@@ -92,7 +92,7 @@ void updateMotion(FlyingObject& obj, const Environment& env, double& t, std::ofs
 }
 
 int main() {
-    std::setlocale(LC_ALL, "Russian");
+    
 
     Environment earth(6.67e-11, 5.97e24, 6.37e6, 1.23, 237, 8.31, 0.02897);
     FlyingObject stone(5, 0.2, 0.5, 100, pi / 4, 0.01, 100);
