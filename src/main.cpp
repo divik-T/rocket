@@ -1,17 +1,16 @@
 ﻿#include <iostream>
 #include <fstream>
 #include <cmath>
+#include "../include/Flyingobject.h"
+#include "../include/Environment.h"
 
-const double pi = 3.141512343;
-const double dt = 0.01;
-const double g = 9.81;
-
+/*
 class Environment {
 public:
-    double G, m_e, R_e, rho0, T, R, m_air;
+    double  m_e, R_e, rho0, T, R, m_air;
 
-    Environment(double G, double m_e, double R_e, double rho0, double T, double R, double m_air)
-        : G(G), m_e(m_e), R_e(R_e), rho0(rho0), T(T), R(R), m_air(m_air) {}
+    Environment(double m_e, double R_e, double rho0, double T, double R, double m_air)
+        : m_e(m_e), R_e(R_e), rho0(rho0), T(T), R(R), m_air(m_air) {}
 
     double computeAirDensity(double y) const {
         
@@ -33,15 +32,13 @@ public:
 
     void computeForces(double vx, double vy, double y, double& ax, double& ay, const Environment& env) {
         double rho = env.computeAirDensity(y);
-        
-
-        ax = (-rho * pow(radius, 2) * pi * shape_coeff * vx + M * U0 * cos(alpha)) / mass;
-        ay = (-g * mass - rho * pow(radius, 2) * pi * shape_coeff * vy + M * U0 * sin(alpha)) / mass;
+        ax = (-rho * pow(radius, 2) * pi * shape_coeff * abs(vx)*vx + M * U0 * cos(pi/2)) / mass;
+        ay = (-g * mass - rho * pow(radius, 2) * pi * shape_coeff * abs(vy)*vy + M * U0 * sin(pi/2)) / mass;
     }
-};
+};*/
 
-void updateMotion(FlyingObject& obj, const Environment& env, double& t, std::ofstream& file) {
-    while (true) {
+void OneStepRungeKutta(FlyingObject& obj, const Environment& env, double dt) {
+   
         double k1vx, k2vx, k3vx, k4vx;
         double k1vy, k2vy, k3vy, k4vy;
         double k1x, k2x, k3x, k4x;
@@ -80,33 +77,67 @@ void updateMotion(FlyingObject& obj, const Environment& env, double& t, std::ofs
 
         obj.mass = obj.mass - obj.M * dt;
         obj.alpha = atan2(obj.vy, obj.vx);
-
-        file << t << "\t" << obj.x << "\t" << obj.y << "\n";
-        std::cout << "t: " << t << " | x: " << obj.x << " | y: " << obj.y << std::endl;
-
-        if (obj.y < 0) {
-            break;
-        }
-        t += dt;
-    }
 }
 
-int main() {
+void WriteInFile(FlyingObject& obj, double t,std::ofstream& file ){
+    file << t << "\t" << obj.x << "\t" << obj.y << "\n";
+    //std::cout << "t: " << t << " | x: " << obj.x << " | y: " << obj.y << std::endl;
     
+}
 
-    Environment earth(6.67e-11, 5.97e24, 6.37e6, 1.23, 237, 8.31, 0.02897);
-    FlyingObject stone(5, 0.2, 0.5, 100, pi / 4, 0.01, 100);
+double TheoreticalTrajectory(double &vy0,double &mass0,double &U0,double &M,double& t){
+    return  vy0+U0*log10((mass0)/(mass0-M*t))/log10(exp(1))-g*t;
+}
+
+bool СompOfThAndRK(double &vy0,double &mass0,double &U0,double &M,FlyingObject& obj, const Environment& env, double& t){
+    double v_theor=TheoreticalTrajectory(vy0,mass0,U0,M, t);
+    return (abs((obj.vy-v_theor)/(v_theor))) <=0.01;
+}
+
+void CalculationOfTrajectory(FlyingObject& obj, const Environment& env, double& t,double dt,  std::ofstream& file){
+    double z=0;
+    double vy0=obj.vy;
+    double mass0=obj.mass;
+    double Uy0=obj.U0;
+    double M=obj.M;
+    bool Correct=1;
+    for(;;){
+        
+        OneStepRungeKutta(obj, env, dt);
+        if(obj.y<=0 || obj.mass<=0){break;}
+        if(Correct==1){
+            Correct=СompOfThAndRK(vy0, mass0, Uy0, M, obj, env, t);
+        }   
+        WriteInFile(obj, t, file);
+        t += dt;
+        if (Correct==0){
+            СompOfThAndRK(vy0, mass0, Uy0, M, obj, env, t);
+        }
+    }
+    if (Correct!=1){
+        std::cout<<"error > 1% \n";
+    }
+    std::cout << "Landed in x: " << obj.x << " m in t: " << t << " s\n";
+}
+
+
+
+int main() {
+    const double dt = 0.01;
+    Environment earth( 5.97e24, 6.37e6, 1.23, 237, 8.31, 0.02897);
+    FlyingObject stone(5, 0.2, 0, 100, pi / 4, 0.01, 100);
 
     std::ofstream file("trajectory.txt");
     if (!file) {
-        std::cout << "Ошибка открытия файла!" << std::endl;
+        std::cout << "File is not open" << std::endl;
         return 1;
     }
 
     double t = 0;
-    std::cout << "Запуск на Земле:\n";
-    updateMotion(stone, earth, t, file);
-    std::cout << "Приземлился в x: " << stone.x << " м за t: " << t << " с\n";
+    
+    std::cout << "Start  on Earth\n";
+    CalculationOfTrajectory(stone, earth, t, dt, file);
+    
 
     file.close();
     return 0;
