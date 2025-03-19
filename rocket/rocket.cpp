@@ -5,7 +5,7 @@
 #include "FlyingObject.h"
 
 
-const double dt = 0.01;
+const double dt = 0.001;
 
 
 /*
