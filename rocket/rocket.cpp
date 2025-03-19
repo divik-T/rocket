@@ -1,11 +1,14 @@
 ﻿#include <iostream>
 #include <fstream>
 #include <cmath>
+#include "Enviroment.h"
+#include "FlyingObject.h"
 
-const double pi = 3.1415;
+
 const double dt = 0.01;
-const double g = 9.81;
 
+
+/*
 class Environment {
 public:
     double G, m_e, R_e, rho0, T, R, m_air;
@@ -19,6 +22,9 @@ public:
     }
 };
 
+*/
+
+/*
 class FlyingObject {
 public:
     double mass, radius, shape_coeff, x, y, vx, vy, M, U0, alpha;
@@ -40,73 +46,109 @@ public:
     }
 };
 
-void updateMotion(FlyingObject& obj, const Environment& env, double& t, std::ofstream& file) {
-    while (true) {
-        double k1vx, k2vx, k3vx, k4vx;
-        double k1vy, k2vy, k3vy, k4vy;
-        double k1x, k2x, k3x, k4x;
-        double k1y, k2y, k3y, k4y;
-        double ax, ay;
+*/
 
-        obj.computeForces(obj.vx, obj.vy, obj.y, ax, ay, env);
+void OneStepRungeKutta(FlyingObject& obj, const Enviroment& env, double dt) {
 
-        k1vx = dt * ax;
-        k1vy = dt * ay;
-        k1x = dt * obj.vx;
-        k1y = dt * obj.vy;
+    double k1vx, k2vx, k3vx, k4vx;
+    double k1vy, k2vy, k3vy, k4vy;
+    double k1x, k2x, k3x, k4x;
+    double k1y, k2y, k3y, k4y;
+    double ax, ay;
 
-        obj.computeForces(obj.vx + k1vx / 2, obj.vy + k1vy / 2, obj.y + k1y / 2, ax, ay, env);
-        k2vx = dt * ax;
-        k2vy = dt * ay;
-        k2x = dt * (obj.vx + k1vx / 2);
-        k2y = dt * (obj.vy + k1vy / 2);
+    obj.computeForces(obj.vx, obj.vy, obj.y, ax, ay, env);
 
-        obj.computeForces(obj.vx + k2vx / 2, obj.vy + k2vy / 2, obj.y + k2y / 2, ax, ay, env);
-        k3vx = dt * ax;
-        k3vy = dt * ay;
-        k3x = dt * (obj.vx + k2vx / 2);
-        k3y = dt * (obj.vy + k2vy / 2);
+    k1vx = dt * ax;
+    k1vy = dt * ay;
+    k1x = dt * obj.vx;
+    k1y = dt * obj.vy;
 
-        obj.computeForces(obj.vx + k3vx, obj.vy + k3vy, obj.y + k3y, ax, ay, env);
-        k4vx = dt * ax;
-        k4vy = dt * ay;
-        k4x = dt * (obj.vx + k3vx);
-        k4y = dt * (obj.vy + k3vy);
+    obj.computeForces(obj.vx + k1vx / 2, obj.vy + k1vy / 2, obj.y + k1y / 2, ax, ay, env);
+    k2vx = dt * ax;
+    k2vy = dt * ay;
+    k2x = dt * (obj.vx + k1vx / 2);
+    k2y = dt * (obj.vy + k1vy / 2);
 
-        obj.vx += (k1vx + 2 * k2vx + 2 * k3vx + k4vx) / 6;
-        obj.vy += (k1vy + 2 * k2vy + 2 * k3vy + k4vy) / 6;
-        obj.x += (k1x + 2 * k2x + 2 * k3x + k4x) / 6;
-        obj.y += (k1y + 2 * k2y + 2 * k3y + k4y) / 6;
+    obj.computeForces(obj.vx + k2vx / 2, obj.vy + k2vy / 2, obj.y + k2y / 2, ax, ay, env);
+    k3vx = dt * ax;
+    k3vy = dt * ay;
+    k3x = dt * (obj.vx + k2vx / 2);
+    k3y = dt * (obj.vy + k2vy / 2);
 
-        obj.mass = obj.mass - obj.M * dt;
-        obj.alpha = atan2(obj.vy, obj.vx);
+    obj.computeForces(obj.vx + k3vx, obj.vy + k3vy, obj.y + k3y, ax, ay, env);
+    k4vx = dt * ax;
+    k4vy = dt * ay;
+    k4x = dt * (obj.vx + k3vx);
+    k4y = dt * (obj.vy + k3vy);
 
-        file << t << "\t" << obj.x << "\t" << obj.y << "\n";
-        std::cout << "t: " << t << " | x: " << obj.x << " | y: " << obj.y << std::endl;
+    obj.vx += (k1vx + 2 * k2vx + 2 * k3vx + k4vx) / 6;
+    obj.vy += (k1vy + 2 * k2vy + 2 * k3vy + k4vy) / 6;
+    obj.x += (k1x + 2 * k2x + 2 * k3x + k4x) / 6;
+    obj.y += (k1y + 2 * k2y + 2 * k3y + k4y) / 6;
 
-        if (obj.y < 0) {
-            break;
-        }
-        t += dt;
-    }
+    obj.mass = obj.mass - obj.M * dt;
+    obj.alpha = atan2(obj.vy, obj.vx);
 }
 
-int main() {
-    std::setlocale(LC_ALL, "Russian");
+void WriteInFile(FlyingObject& obj, double t, std::ofstream& file) {
+    file << t << "\t" << obj.x << "\t" << obj.y << "\n";
+    //std::cout << "t: " << t << " | x: " << obj.x << " | y: " << obj.y << std::endl;
 
-    Environment earth(6.67e-11, 5.97e24, 6.37e6, 1.23, 237, 8.31, 0.02897);
-    FlyingObject stone(5, 0.2, 0.5, 100, pi / 4, 0.01, 100);
+}
+
+double TheoreticalTrajectory(double& vy0, double& mass0, double& U0, double& M, double& t) {
+    return  vy0 + U0 * log10((mass0) / (mass0 - M * t)) / log10(exp(1)) - g * t;
+}
+
+bool СompOfThAndRK(double& vy0, double& mass0, double& U0, double& M, FlyingObject& obj, const Enviroment& env, double& t) {
+    double v_theor = TheoreticalTrajectory(vy0, mass0, U0, M, t);
+    return (abs((obj.vy - v_theor) / (v_theor))) <= 0.01;
+}
+
+void CalculationOfTrajectory(FlyingObject& obj, const Enviroment& env, double& t, double dt, std::ofstream& file) {
+    double z = 0;
+    double vy0 = obj.vy;
+    double mass0 = obj.mass;
+    double Uy0 = obj.U0;
+    double M = obj.M;
+    bool Correct = 1;
+    for (;;) {
+
+        OneStepRungeKutta(obj, env, dt);
+        if (obj.y <= 0 || obj.mass <= 0) { break; }
+        if (Correct == 1) {
+            Correct = СompOfThAndRK(vy0, mass0, Uy0, M, obj, env, t);
+        }
+        WriteInFile(obj, t, file);
+        t += dt;
+        if (Correct == 0) {
+            СompOfThAndRK(vy0, mass0, Uy0, M, obj, env, t);
+        }
+    }
+    if (Correct != 1) {
+        std::cout << "error > 1% \n";
+    }
+    std::cout << "Landed in x: " << obj.x << " m in t: " << t << " s\n";
+}
+
+
+
+int main() {
+    const double dt = 0.01;
+    Enviroment earth(5.97e24, 6.37e6, 1.23, 237, 8.31, 0.02897);
+    FlyingObject stone(5, 0.2, 0, 100, pi / 4, 0.01, 100);
 
     std::ofstream file("trajectory.txt");
     if (!file) {
-        std::cout << "Ошибка открытия файла!" << std::endl;
+        std::cout << "File is not open" << std::endl;
         return 1;
     }
 
     double t = 0;
-    std::cout << "Запуск на Земле:\n";
-    updateMotion(stone, earth, t, file);
-    std::cout << "Приземлился в x: " << stone.x << " м за t: " << t << " с\n";
+
+    std::cout << "Start  on Earth\n";
+    CalculationOfTrajectory(stone, earth, t, dt, file);
+
 
     file.close();
     return 0;
