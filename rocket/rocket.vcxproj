@@ -127,7 +127,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Enviroment.cpp" />
+    <ClCompile Include="FlyingObject.cpp" />
     <ClCompile Include="rocket.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Enviroment.h" />
+    <ClInclude Include="FlyingObject.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
