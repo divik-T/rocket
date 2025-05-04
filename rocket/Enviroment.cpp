@@ -1,11 +1,12 @@
 #include "Enviroment.h"
 
-double Enviroment::computeAirDensity(double y) const
+double Enviroment::computeAirDensity(double x, double y, double z) const
 {
-	return rho0 * exp((-m_air * g * y) / (R * T));
+    return rho0 * exp((-m_air * g * sqrt(pow(y, 2) + pow(x, 2) + pow(z, 2))) / (R * T));
 }
 
-Enviroment::Enviroment(double m_e, double R_e, double rho0, double T, double R, double m_air)
-	: m_e(m_e), R_e(R_e), rho0(rho0), T(T), R(R), m_air(m_air) { }
 
 
+Enviroment::Enviroment(double rho0, double T, double m_air)
+    : rho0(rho0), T(T), m_air(m_air), rho(rho0) {
+}

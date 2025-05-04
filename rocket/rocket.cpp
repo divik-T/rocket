@@ -1,144 +1,306 @@
-﻿#include <iostream>
+﻿
 #include <fstream>
 #include <cmath>
+#include <vector>
 #include "Enviroment.h"
 #include "FlyingObject.h"
+#include <iostream>
 
 
-const double dt = 0.001;
-
-
-/*
-class Environment {
-public:
-    double G, m_e, R_e, rho0, T, R, m_air;
-
-    Environment(double G, double m_e, double R_e, double rho0, double T, double R, double m_air)
-        : G(G), m_e(m_e), R_e(R_e), rho0(rho0), T(T), R(R), m_air(m_air) {}
-
-    double computeAirDensity(double y) const {
-        
-        return rho0 * exp((-m_air * g * y) / (R * T));
-    }
-};
-
-*/
-
-/*
-class FlyingObject {
-public:
-    double mass, radius, shape_coeff, x, y, vx, vy, M, U0, alpha;
-
-    FlyingObject(double mass, double radius, double shape_coeff, double v0, double alpha0, double M, double U0)
-        : mass(mass), radius(radius), shape_coeff(shape_coeff), M(M), U0(U0), alpha(alpha0) {
-        vx = v0 * cos(alpha0);
-        vy = v0 * sin(alpha0);
-        x = 0;
-        y = 0;
-    }
-
-    void computeForces(double vx, double vy, double y, double& ax, double& ay, const Environment& env) {
-        double rho = env.computeAirDensity(y);
-        
-
-        ax = (-rho * pow(radius, 2) * pi * shape_coeff * vx + M * U0 * cos(alpha)) / mass;
-        ay = (-g * mass - rho * pow(radius, 2) * pi * shape_coeff * vy + M * U0 * sin(alpha)) / mass;
-    }
-};
-
-*/
-
-void OneStepRungeKutta(FlyingObject& obj, const Enviroment& env, double dt) {
-
-    double k1vx, k2vx, k3vx, k4vx;
-    double k1vy, k2vy, k3vy, k4vy;
-    double k1x, k2x, k3x, k4x;
-    double k1y, k2y, k3y, k4y;
-    double ax, ay;
-
-    obj.computeForces(obj.vx, obj.vy, obj.y, ax, ay, env);
-
-    k1vx = dt * ax;
-    k1vy = dt * ay;
-    k1x = dt * obj.vx;
-    k1y = dt * obj.vy;
-
-    obj.computeForces(obj.vx + k1vx / 2, obj.vy + k1vy / 2, obj.y + k1y / 2, ax, ay, env);
-    k2vx = dt * ax;
-    k2vy = dt * ay;
-    k2x = dt * (obj.vx + k1vx / 2);
-    k2y = dt * (obj.vy + k1vy / 2);
-
-    obj.computeForces(obj.vx + k2vx / 2, obj.vy + k2vy / 2, obj.y + k2y / 2, ax, ay, env);
-    k3vx = dt * ax;
-    k3vy = dt * ay;
-    k3x = dt * (obj.vx + k2vx / 2);
-    k3y = dt * (obj.vy + k2vy / 2);
-
-    obj.computeForces(obj.vx + k3vx, obj.vy + k3vy, obj.y + k3y, ax, ay, env);
-    k4vx = dt * ax;
-    k4vy = dt * ay;
-    k4x = dt * (obj.vx + k3vx);
-    k4y = dt * (obj.vy + k3vy);
-
-    obj.vx += (k1vx + 2 * k2vx + 2 * k3vx + k4vx) / 6;
-    obj.vy += (k1vy + 2 * k2vy + 2 * k3vy + k4vy) / 6;
-    obj.x += (k1x + 2 * k2x + 2 * k3x + k4x) / 6;
-    obj.y += (k1y + 2 * k2y + 2 * k3y + k4y) / 6;
-
-    obj.mass = obj.mass - obj.M * dt;
-    obj.alpha = atan2(obj.vy, obj.vx);
+bool isInteger(double x) {
+    return std::fabs(x - std::round(x)) < 1e-3;
 }
 
+
+const double dt = 0.005;
+const double OrderOfRK = 4;
+const int numOfParam = 8;
+
+
+double ChooseDeltaT(int i, double dt) {
+    switch (i) {
+    case 0:
+        return 0.0;
+        break;
+    case 1:
+        return dt / 2;
+        break;
+    case 2:
+        return dt / 2;
+        break;
+    case 3:
+        return dt;
+        break;
+    }
+}
+
+
+double bRK(int i) {
+    switch (i) {
+    case 0:
+        return 1.0 / 6;
+        break;
+    case 1:
+        return 2.0 / 6;
+        break;
+    case 2:
+        return 2.0 / 6;
+        break;
+    case 3:
+        return 1.0 / 6;
+        break;
+    }
+}
+
+double cRK(int i) {
+    switch (i) {
+    case 0:
+        return 0.0;
+        break;
+    case 1:
+        return 1.0 / 2;
+        break;
+    case 2:
+        return 1.0 / 2;
+        break;
+    case 3:
+        return 1.0;
+        break;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//x [0], y [1], z [2], Vx [3], Vy [4], Vz [5], m [6], t [7];
+
+void oneStepRungeKutt(
+    const std::vector<double>& vecOfLeftParts,
+    std::vector<double>& vecOfNewLeftParts,
+    const std::vector<double(*)(const std::vector<double>& phaseSpace, const FlyingObject& obj, const Enviroment& env)>& vecOfRightParts,
+    const FlyingObject& obj,
+    const Enviroment& env,
+    double t, double dt) {
+
+    std::vector <double> stateVector(numOfParam);
+    std::vector <double> initialStateVector;
+    std::copy(vecOfLeftParts.begin(), vecOfLeftParts.end(), stateVector.begin());
+    std::copy(stateVector.begin(), stateVector.end(), vecOfNewLeftParts.begin());
+    stateVector[stateVector.size() - 1] = t;
+    initialStateVector = stateVector;
+    std::vector<double> vecOfDeltaParam(stateVector.size());
+    vecOfDeltaParam[vecOfDeltaParam.size() - 1] = dt;
+
+    for (int j = 0; j < OrderOfRK; ++j) {
+        for (int i = 0; i < vecOfDeltaParam.size() - 1; ++i) {
+            vecOfDeltaParam[i] = dt * vecOfRightParts[i](stateVector, obj, env);
+        }
+
+        for (int i = 0; i < vecOfNewLeftParts.size(); ++i) {
+            vecOfNewLeftParts[i] += vecOfDeltaParam[i] * bRK(j);
+            stateVector[i] = initialStateVector[i] + cRK(j) * vecOfDeltaParam[i];
+        }
+    }
+}
+
+double SecondNewtonLawX(const std::vector<double>& stateVector, const FlyingObject& obj, const Enviroment& env) {
+    double
+        x = stateVector[0],
+        y = stateVector[1],
+        z = stateVector[2],
+        Vx = stateVector[3],
+        Vy = stateVector[4],
+        Vz = stateVector[5],
+        m = stateVector[6],
+        t = stateVector[7];
+
+    return (-env.rho * pow(obj.radius, 2) * pi * obj.shape_coeff * Vx * sqrt(pow(Vx, 2) + pow(Vy, 2) + pow(Vz, 2)) + obj.M * obj.U0 - G * m * m_e * x / pow((sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2))), 3)) / m;// изменён угол, потом исправить
+}
+
+double SecondNewtonLawY(const std::vector<double>& stateVector, const FlyingObject& obj, const Enviroment& env) {
+    double
+        x = stateVector[0],
+        y = stateVector[1],
+        z = stateVector[2],
+        Vx = stateVector[3],
+        Vy = stateVector[4],
+        Vz = stateVector[5],
+        m = stateVector[6],
+        t = stateVector[7];
+
+    return (-G * m * m_e * y / pow((sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2))), 3) - env.rho * pow(obj.radius, 2) * pi * obj.shape_coeff * Vy * sqrt(pow(Vx, 2) + pow(Vy, 2) + pow(Vz, 2)) + obj.M * obj.U0 * Vy / sqrt(pow(Vx, 2) + pow(Vy, 2) + pow(Vz, 2))) / m;
+}
+
+double SecondNewtonLawZ(const std::vector<double>& stateVector, const FlyingObject& obj, const Enviroment& env) {
+    double
+        x = stateVector[0],
+        y = stateVector[1],
+        z = stateVector[2],
+        Vx = stateVector[3],
+        Vy = stateVector[4],
+        Vz = stateVector[5],
+        m = stateVector[6],
+        t = stateVector[7];
+
+    return (-env.rho * pow(obj.radius, 2) * pi * obj.shape_coeff * sqrt(pow(Vx, 2) + pow(Vy, 2) + pow(Vz, 2)) * Vz + obj.M * obj.U0 - G * m * m_e * z / pow((sqrt(pow(x, 2) + pow(y, 2)) + pow(z, 2)), 3)) / m;// изменён угол, потом исправить
+}
+
+double VelocityX(const std::vector<double>& stateVector, const FlyingObject& obj, const Enviroment& env) {
+    double
+        x = stateVector[0],
+        y = stateVector[1],
+        z = stateVector[2],
+        Vx = stateVector[3],
+        Vy = stateVector[4],
+        Vz = stateVector[5],
+        m = stateVector[6],
+        t = stateVector[7];
+
+    return Vx;
+}
+//x [0], y [1], z [2], Vx [3], Vy [4], Vz [5], m [6], t [7];
+double VelocityY(const std::vector<double>& stateVector, const FlyingObject& obj, const Enviroment& env) {
+    double
+        x = stateVector[0],
+        y = stateVector[1],
+        z = stateVector[2],
+        Vx = stateVector[3],
+        Vy = stateVector[4],
+        Vz = stateVector[5],
+        m = stateVector[6],
+        t = stateVector[7];
+
+    return Vy;
+}
+
+double VelocityZ(const std::vector<double>& stateVector, const FlyingObject& obj, const Enviroment& env) {
+    double
+        x = stateVector[0],
+        y = stateVector[1],
+        z = stateVector[2],
+        Vx = stateVector[3],
+        Vy = stateVector[4],
+        Vz = stateVector[5],
+        m = stateVector[6],
+        t = stateVector[7];
+
+    return Vz;
+}
+
+double massPerTime(const std::vector<double>& stateVector, const FlyingObject& obj, const Enviroment& env) {
+    double
+        x = stateVector[0],
+        y = stateVector[1],
+        z = stateVector[2],
+        Vx = stateVector[3],
+        Vy = stateVector[4],
+        Vz = stateVector[5],
+        m = stateVector[6],
+        t = stateVector[7];
+
+    double M = obj.M;
+    return -M;
+}
+
+void updateState(std::vector<double>& vecOfNewLeftParts,
+    FlyingObject& obj,
+    Enviroment& env) {
+    obj.x = vecOfNewLeftParts[0];
+    obj.y = vecOfNewLeftParts[1];
+    obj.z = vecOfNewLeftParts[2];
+    obj.vx = vecOfNewLeftParts[3];
+    obj.vy = vecOfNewLeftParts[4];
+    obj.vz = vecOfNewLeftParts[5];
+    obj.mass = vecOfNewLeftParts[6];
+
+    obj.alpha = obj.vy / obj.vx;
+    obj.tetta = obj.vz / (sqrt(pow(obj.vx, 2) + pow(obj.vy, 2)));
+    env.rho = env.computeAirDensity(obj.x, obj.y, obj.z);
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void WriteInFile(FlyingObject& obj, double t, std::ofstream& file) {
-    file << t << "\t" << obj.x << "\t" << obj.y << "\n";
+    file << t << "\t" << obj.x << "\t" << obj.y << "\t" << obj.z << "\n";
     //std::cout << "t: " << t << " | x: " << obj.x << " | y: " << obj.y << std::endl;
 
 }
 
-double TheoreticalTrajectory(double& vy0, double& mass0, double& U0, double& M, double& t) {
+double TheoreticalTrajectory(double& vy0, double& mass0, double& U0, double& M, double t) {
     return  vy0 + U0 * log10((mass0) / (mass0 - M * t)) / log10(exp(1)) - g * t;
 }
 
-bool СompOfThAndRK(double& vy0, double& mass0, double& U0, double& M, FlyingObject& obj, const Enviroment& env, double& t) {
+bool СompOfThAndRK(double& vy0, double& mass0, double& U0, double& M, FlyingObject& obj, const Enviroment& env, double t) {
     double v_theor = TheoreticalTrajectory(vy0, mass0, U0, M, t);
     return (abs((obj.vy - v_theor) / (v_theor))) <= 0.01;
 }
 
-void CalculationOfTrajectory(FlyingObject& obj, const Enviroment& env, double& t, double dt, std::ofstream& file) {
-    double z = 0;
+void CalculationOfTrajectory(FlyingObject& obj, Enviroment& env, double& t, double dt, std::ofstream& file) {
+
     double vy0 = obj.vy;
     double mass0 = obj.mass;
     double Uy0 = obj.U0;
     double M = obj.M;
     bool Correct = 1;
-    for (;;) {
+    obj.y = 6400000;
+    std::vector<double>newState(numOfParam);
+    std::vector<double>State = { obj.x, obj.y, obj.z, obj.vx, obj.vy, obj.vz, obj.mass };
+    std::vector<double(*)(const std::vector<double>& stateVector, const FlyingObject& obj, const Enviroment& env)> vecOfFunctions =
+    { VelocityX, VelocityY, VelocityZ, SecondNewtonLawX, SecondNewtonLawY, SecondNewtonLawZ, massPerTime };
 
-        OneStepRungeKutta(obj, env, dt);
-        if (obj.y <= 0 || obj.mass <= 0) { break; }
+    for (;;) {
+        oneStepRungeKutt(State, newState, vecOfFunctions, obj, env, t, dt);
+        updateState(newState, obj, env);
+        /*if (sqrt(pow(obj.y, 2) + pow(obj.x, 2) + pow(obj.z, 2)) <= 6400000 || obj.mass <= 0) {
+            obj.y = 6400000;
+            obj.x = State[0] + ((State[2] / State[3]) * (6400000 - State[1]));
+            break;
+        }*/
+        State = newState;
+
+        //std::cout << "runge-kutt Vy: " << obj.vy << " theor Vy: " << TheoreticalTrajectory(vy0, mass0, Uy0, M, t + dt) << " s\n";
+
         if (Correct == 1) {
-            Correct = СompOfThAndRK(vy0, mass0, Uy0, M, obj, env, t);
+            Correct = СompOfThAndRK(vy0, mass0, Uy0, M, obj, env, t + dt);
         }
-        WriteInFile(obj, t, file);
-        t += dt;
+        if (isInteger(t)) {
+            WriteInFile(obj, t, file);
+        }
         if (Correct == 0) {
-            СompOfThAndRK(vy0, mass0, Uy0, M, obj, env, t);
+            СompOfThAndRK(vy0, mass0, Uy0, M, obj, env, t + dt);
         }
+        t += dt;
+
     }
     if (Correct != 1) {
-        std::cout << "error > 1% \n";
+        // std::cout << "error > 1% \n";
     }
     std::cout << "Landed in x: " << obj.x << " m in t: " << t << " s\n";
 }
 
-
-
 int main() {
     const double dt = 0.01;
-    Enviroment earth(5.97e24, 6.37e6, 1.23, 237, 8.31, 0.02897);
-    FlyingObject stone(5, 0.2, 0, 100, pi / 4, 0.01, 100);
 
-    std::ofstream file("trajectory.txt");
+
+    const double rho0 = 1.23; // плонтность воздуха у поверзности 
+    const double T = 237; // температура
+    const double m_air = 0.02897;// масса воздуха 
+
+    Enviroment earth(rho0, T, m_air);
+
+    const double mass = 5; // масса объекта
+    const double radius = 0.2; //радиус камня
+    const double shape_coeff = 0; // коэфффициент трения фигуры
+    const double v0 = 7000 * sqrt(2); //модуль начальной скорости 
+    const double phi = pi / 8; // угол между проекцией начального вектора скорости на плоскость OXY и осью x
+    const double tetta = pi / 2; //угол между начальным вектором скорости ракеты и осью z (используется система: x направлен вправо, y-вверх, z на нас( перпендикулярно экрану))
+    const double M = 0;     //dm/dt
+    const double U0 = 1; //скорость истечения газа
+
+
+    FlyingObject stone(mass, radius, shape_coeff, v0, phi, tetta, M, U0);
+
+    std::ofstream file("../../WindowsProject1/WindowsProject1/trajectory.txt");
     if (!file) {
         std::cout << "File is not open" << std::endl;
         return 1;
@@ -148,7 +310,6 @@ int main() {
 
     std::cout << "Start  on Earth\n";
     CalculationOfTrajectory(stone, earth, t, dt, file);
-
 
     file.close();
     return 0;
