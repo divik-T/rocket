@@ -25,7 +25,7 @@ bool Vector::ScalarMOfVector( Vector r)
 	return (this->i*r.i+ this->j*r.j+this->k*r.k)>0;
 }
 
-double ControlSystem::polynomialApproximation(double deviation) {
+double ForwardMotion::polynomialApproximation(double deviation) {
 	const double a5 = 0.03978;
 	const double a4 = 0.01337;
 	const double a3 = -0.02987;
@@ -38,8 +38,9 @@ double ControlSystem::polynomialApproximation(double deviation) {
 }
 
 
-double ControlSystem::ComputeForceR(Point initialCords, double r, double phi, double tetta, Point CorrectCords)
-{
+
+double ForwardMotion::ComputeForceR(Point initialCords, double r, double phi, double tetta, Point CorrectCords)
+{	
 	double deviation = initialCords.distance(CorrectCords);
 	Vector VToCurrentCords(initialCords.x - CorrectCords.x, initialCords.y - CorrectCords.y, initialCords.z - CorrectCords.z);
 	Vector rocket(r * sin(tetta) * cos(phi) - initialCords.x, r * sin(tetta) * sin(phi) - initialCords.y, r * cos(tetta) - initialCords.z);
@@ -47,11 +48,11 @@ double ControlSystem::ComputeForceR(Point initialCords, double r, double phi, do
 	if (rocket.ScalarMOfVector(VToCurrentCords) == 0) {
 		deviation = -deviation;
 	}
-	 MassPerTime =MassPerTime0 * polynomialApproximation(deviation);
+	MassPerTime =MassPerTime0 * polynomialApproximation(deviation);
 	ForceOfReactivity = MassPerTime*U;
 	return ForceOfReactivity;
-
 }
 
+void ForwardMotion::send(FlyingObject& obj) {
 
-
+}

@@ -1,4 +1,5 @@
 #pragma once
+#include "FlyingObject.h"
 class Point {
 public:
 	double x, y, z;
@@ -16,14 +17,19 @@ public:
 };
 
 class ControlSystem {
-private:
-	
-	double polynomialApproximation(double deviation);
 public:
-	double PercentageOfOpening; 
-	double ForceOfReactivity; 
+	virtual void send(FlyingObject &obj)=0;
+
+};
+
+class ForwardMotion : public ControlSystem {
+public:
+	double PercentageOfOpening;
+	double ForceOfReactivity;
 	double MassPerTime0;
-	double MassPerTime; 
+	double MassPerTime;
 	double U;
 	double ComputeForceR(Point initialCords, double r, double phi, double tetta, Point CorrectCords);
+	double polynomialApproximation(double deviation);
+	void send(FlyingObject& obj) override;
 };
