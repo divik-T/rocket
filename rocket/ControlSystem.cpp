@@ -1,29 +1,6 @@
 #include "ControlSystem.h"
 #include <cmath>
 
-//Vector
-Vector::Vector(double i, double j, double k): i(i), j(j), k(k){}
-
-Vector::Vector(double x1, double x2, double y1, double y2, double z1, double z2): i(x2-x1), j(y2-y1), k(z2-z1){}
-
-double Vector::length() const
-{
-	return sqrt(i * i + j * j + k * k);
-}
-//
-//Point 
-Point::Point(double x, double y, double z):x(x), y(y), z(z){}
-
-double Point::distance(const Point& other) const
-{
-	return sqrt(pow(x - other.x, 2) + pow(y - other.y, 2) + pow(z - other.z, 2));
-}
-//
-//Control System
-bool Vector::ScalarMOfVector( Vector r)
-{
-	return (this->i*r.i+ this->j*r.j+this->k*r.k)>0;
-}
 
 double ForwardMotion::polynomialApproximation(double deviation) {
 	const double a5 = 0.03978;
@@ -42,10 +19,10 @@ double ForwardMotion::polynomialApproximation(double deviation) {
 double ForwardMotion::ComputeForceR(Point initialCords, double r, double phi, double tetta, Point CorrectCords)
 {	
 	double deviation = initialCords.distance(CorrectCords);
-	Vector VToCurrentCords(initialCords.x - CorrectCords.x, initialCords.y - CorrectCords.y, initialCords.z - CorrectCords.z);
-	Vector rocket(r * sin(tetta) * cos(phi) - initialCords.x, r * sin(tetta) * sin(phi) - initialCords.y, r * cos(tetta) - initialCords.z);
+	Vec3 VToCurrentCords(initialCords.getX() - CorrectCords.getX(), initialCords.getY() - CorrectCords.getY(), initialCords.getZ() - CorrectCords.getZ());
+	Vec3 rocket(r * sin(tetta) * cos(phi) - initialCords.getX(), r * sin(tetta) * sin(phi) - initialCords.getY(), r * cos(tetta) - initialCords.getZ());
 	deviation /= 1000.0;
-	if (rocket.ScalarMOfVector(VToCurrentCords) == 0) {
+	if (rocket.dot(VToCurrentCords) <0) {
 		deviation = -deviation;
 	}
 	MassPerTime =MassPerTime0 * polynomialApproximation(deviation);

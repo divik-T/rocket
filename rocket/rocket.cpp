@@ -4,8 +4,14 @@
 #include <vector>
 #include "Enviroment.h"
 #include "FlyingObject.h"
+#include "RangeKutt.h"
 #include <iostream>
 
+//----------------------------------------------------------------------------------------------------
+
+// ДЕМЯШКЕВИЧ, АНДРЕЙКОВЕЦ, ДИДЕНЬКО
+
+//----------------------------------------------------------------------------------------------------
 
 bool isInteger(double x) {
     return std::fabs(x - std::round(x)) < 1e-3;
@@ -13,94 +19,16 @@ bool isInteger(double x) {
 
 
 const double dt = 0.005;
-const double OrderOfRK = 4;
-const int numOfParam = 8;
-
-
-double ChooseDeltaT(int i, double dt) {
-    switch (i) {
-    case 0:
-        return 0.0;
-        break;
-    case 1:
-        return dt / 2;
-        break;
-    case 2:
-        return dt / 2;
-        break;
-    case 3:
-        return dt;
-        break;
-    }
-}
-
-
-double bRK(int i) {
-    switch (i) {
-    case 0:
-        return 1.0 / 6;
-        break;
-    case 1:
-        return 2.0 / 6;
-        break;
-    case 2:
-        return 2.0 / 6;
-        break;
-    case 3:
-        return 1.0 / 6;
-        break;
-    }
-}
-
-double cRK(int i) {
-    switch (i) {
-    case 0:
-        return 0.0;
-        break;
-    case 1:
-        return 1.0 / 2;
-        break;
-    case 2:
-        return 1.0 / 2;
-        break;
-    case 3:
-        return 1.0;
-        break;
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //x [0], y [1], z [2], Vx [3], Vy [4], Vz [5], m [6], t [7];
 
-void oneStepRungeKutt(
-    const std::vector<double>& vecOfLeftParts,
-    std::vector<double>& vecOfNewLeftParts,
-    const std::vector<double(*)(const std::vector<double>& phaseSpace, const FlyingObject& obj, const Enviroment& env)>& vecOfRightParts,
-    const FlyingObject& obj,
-    const Enviroment& env,
-    double t, double dt) {
+//----------------------------------------------------------------------------------------------------
 
-    std::vector <double> stateVector(numOfParam);
-    std::vector <double> initialStateVector;
-    std::copy(vecOfLeftParts.begin(), vecOfLeftParts.end(), stateVector.begin());
-    std::copy(stateVector.begin(), stateVector.end(), vecOfNewLeftParts.begin());
-    stateVector[stateVector.size() - 1] = t;
-    initialStateVector = stateVector;
-    std::vector<double> vecOfDeltaParam(stateVector.size());
-    vecOfDeltaParam[vecOfDeltaParam.size() - 1] = dt;
+// АНДРЕЙКОВЕЦ - ПРАВЫЕ ЧАСТИ РУНГЕ-КУТТА
 
-    for (int j = 0; j < OrderOfRK; ++j) {
-        for (int i = 0; i < vecOfDeltaParam.size() - 1; ++i) {
-            vecOfDeltaParam[i] = dt * vecOfRightParts[i](stateVector, obj, env);
-        }
-
-        for (int i = 0; i < vecOfNewLeftParts.size(); ++i) {
-            vecOfNewLeftParts[i] += vecOfDeltaParam[i] * bRK(j);
-            stateVector[i] = initialStateVector[i] + cRK(j) * vecOfDeltaParam[i];
-        }
-    }
-}
+//----------------------------------------------------------------------------------------------------
 
 double SecondNewtonLawX(const std::vector<double>& stateVector, const FlyingObject& obj, const Enviroment& env) {
     double
@@ -213,17 +141,22 @@ void updateState(std::vector<double>& vecOfNewLeftParts,
     obj.mass = vecOfNewLeftParts[6];
 
     obj.alpha = obj.vy / obj.vx;
-    obj.tetta = obj.vz / (sqrt(pow(obj.vx, 2) + pow(obj.vy, 2)));
+    obj.betta = obj.vz / (sqrt(pow(obj.vx, 2) + pow(obj.vy, 2)));
     env.rho = env.computeAirDensity(obj.x, obj.y, obj.z);
 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//----------------------------------------------------------------------------------------------------
+
+// ДЕМЯШКЕВИЧ - ВСЕ НИЖЕ
+
+//----------------------------------------------------------------------------------------------------
+
 void WriteInFile(FlyingObject& obj, double t, std::ofstream& file) {
     file << t << "\t" << obj.x << "\t" << obj.y << "\t" << obj.z << "\n";
     //std::cout << "t: " << t << " | x: " << obj.x << " | y: " << obj.y << std::endl;
-
 }
 
 double TheoreticalTrajectory(double& vy0, double& mass0, double& U0, double& M, double t) {
@@ -234,6 +167,8 @@ bool СompOfThAndRK(double& vy0, double& mass0, double& U0, double& M, FlyingObj
     double v_theor = TheoreticalTrajectory(vy0, mass0, U0, M, t);
     return (abs((obj.vy - v_theor) / (v_theor))) <= 0.01;
 }
+
+int numOfParam = 8;
 
 void CalculationOfTrajectory(FlyingObject& obj, Enviroment& env, double& t, double dt, std::ofstream& file) {
 
@@ -279,6 +214,7 @@ void CalculationOfTrajectory(FlyingObject& obj, Enviroment& env, double& t, doub
 }
 
 int main() {
+
     const double dt = 0.01;
 
 
@@ -286,19 +222,19 @@ int main() {
     const double T = 237; // температура
     const double m_air = 0.02897;// масса воздуха 
 
-    Enviroment earth(rho0, T, m_air);
+    Enviroment earth(rho0, T, m_air, 0,0,0);
 
     const double mass = 5; // масса объекта
     const double radius = 0.2; //радиус камня
     const double shape_coeff = 0; // коэфффициент трения фигуры
     const double v0 = 7000 * sqrt(2); //модуль начальной скорости 
     const double phi = pi / 8; // угол между проекцией начального вектора скорости на плоскость OXY и осью x
-    const double tetta = pi / 2; //угол между начальным вектором скорости ракеты и осью z (используется система: x направлен вправо, y-вверх, z на нас( перпендикулярно экрану))
+    const double betta = pi / 2; //угол между начальным вектором скорости ракеты и осью z (используется система: x направлен вправо, y-вверх, z на нас( перпендикулярно экрану))
     const double M = 0;     //dm/dt
     const double U0 = 1; //скорость истечения газа
 
 
-    FlyingObject stone(mass, radius, shape_coeff, v0, phi, tetta, M, U0);
+    FlyingObject stone(mass, radius, shape_coeff, v0, phi, betta, M, U0, 0,0,0,0,0,0,0,0,0);
 
     std::ofstream file("../../WindowsProject1/WindowsProject1/trajectory.txt");
     if (!file) {

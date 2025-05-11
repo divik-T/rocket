@@ -1,20 +1,13 @@
 #pragma once
 #include "FlyingObject.h"
-class Point {
-public:
-	double x, y, z;
-	Point(double x, double y, double z);
-	double distance(const Point& other) const;
-};
+#include "AnaliticGeometry.h"
 
-class Vector {
-public:
-	double i, j, k;
-	Vector(double i , double j, double k);
-	Vector(double x1, double x2, double y1, double y2, double z1, double z2);
-	double length() const;
-	bool ScalarMOfVector( Vector r);
-};
+//----------------------------------------------------------------------------------------------------
+
+// ÄÅÌßØÊÅÂÈ×, ÄÓÁÎÂÑÊÈÉ, ÀÍÄÐÅÉÊÎÂÅÖ
+
+//----------------------------------------------------------------------------------------------------
+const double MassPerTime0 = 100;
 
 class ControlSystem {
 public:
@@ -23,12 +16,21 @@ public:
 };
 
 class ForwardMotion : public ControlSystem {
-public:
 	double PercentageOfOpening;
 	double ForceOfReactivity;
-	double MassPerTime0;
 	double MassPerTime;
 	double U;
+public:
+	double getMassPerTime() const { return MassPerTime; };
+	double getForceOfReactivity() const { return ForceOfReactivity; };
+	double getU() const { return U; };
+	double getPercentageOfOpening() const { return PercentageOfOpening;};
+
+	void setMassPerTime(double  MperT) { this->MassPerTime = MperT; };
+	void setForceOfReactivity(double FofR) { this->ForceOfReactivity = FofR; };
+	void setU(double  U) { this->U = U; };
+	void setPercentageOfOpening(double PofOp) { this->PercentageOfOpening = PofOp; };
+
 	double ComputeForceR(Point initialCords, double r, double phi, double tetta, Point CorrectCords);
 	double polynomialApproximation(double deviation);
 	void send(FlyingObject& obj) override;

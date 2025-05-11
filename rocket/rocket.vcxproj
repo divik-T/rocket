@@ -127,15 +127,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AnaliticGeometry.cpp" />
+    <ClCompile Include="AnaliticGeometry.h" />
+    <ClCompile Include="CalculateOfAngles.cpp" />
     <ClCompile Include="ControlSystem.cpp" />
     <ClCompile Include="Enviroment.cpp" />
     <ClCompile Include="FlyingObject.cpp" />
+    <ClCompile Include="RangeKutt.cpp" />
     <ClCompile Include="rocket.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CalculateOfAngles.h" />
     <ClInclude Include="ControlSystem.h" />
     <ClInclude Include="Enviroment.h" />
     <ClInclude Include="FlyingObject.h" />
+    <ClInclude Include="RangeKutt.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
